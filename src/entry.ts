@@ -32,7 +32,7 @@ export const validateEntry = async (e: Entry): Promise<string | null> => {
   const memberErr = await verifySignature(e.masterKey, e.member.signature, memberData);
   if (memberErr) return `Invalid memberSignature: ${memberErr}`;
 
-  const bodyData = e.body.data.toString() + e.body.timestamp.toString();
+  const bodyData = e.member.signature.toString() + e.body.data.toString() + e.body.timestamp.toString();
   const bodyErr = await verifySignature(e.masterKey, e.body.signature, bodyData);
   if (bodyErr) return `Invalid bodySignature: ${bodyErr}`;
 
