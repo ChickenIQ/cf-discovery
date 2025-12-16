@@ -7,7 +7,7 @@ const b64Decode = (data: string) => {
   }
 };
 
-// Imports a raw Ed25519 public key for verification. Returns a CryptoKey or null on failure.
+// Imports a raw ed25519 public key for verification. Returns a CryptoKey or null on failure.
 const importKey = async (key: Uint8Array) => {
   try {
     return await crypto.subtle.importKey("raw", key, { name: "Ed25519" }, false, ["verify"]);

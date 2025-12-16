@@ -15,14 +15,16 @@ app.get("/addr", (c) => {
 
 app.post("/", async (c) => {
   const e: Entry = await c.req.json();
+  const masterKey = c.req.header("Master-Key");
+  if (!masterKey) return c.json({ error: "Missing master key" }, 400);
 
   // Validate Entry
-  const validationError = await validateEntry(e);
+  const validationError = await validateEntry(masterKey, e);
   if (validationError) return c.json({ error: validationError }, 400);
 
   // Check for existing newer entry
   const existing = await c.env.DB.prepare("SELECT 1 FROM Entries WHERE masterKey = ? AND memberKey = ? AND bodyTimestamp> ? LIMIT 1")
-    .bind(e.masterKey, e.member.key, e.body.timestamp)
+    .bind(masterKey, e.member.key, e.body.timestamp)
     .first();
 
   if (existing) return c.json({ error: "Newer entry already exists" }, 400);
@@ -30,10 +32,10 @@ app.post("/", async (c) => {
   // Save and replace Entry
   try {
     await c.env.DB.batch([
-      c.env.DB.prepare("DELETE FROM Entries WHERE masterKey = ? AND memberKey = ?").bind(e.masterKey, e.member.key),
+      c.env.DB.prepare("DELETE FROM Entries WHERE masterKey = ? AND memberKey = ?").bind(masterKey, e.member.key),
       c.env.DB.prepare(
         "INSERT INTO Entries (masterKey, memberKey, memberMetadata, memberSignature, bodyData, bodyTimestamp, bodySignature) VALUES (?, ?, ?, ?, ?, ?, ?)"
-      ).bind(e.masterKey, e.member.key, e.member.metadata, e.member.signature, e.body.data, e.body.timestamp, e.body.signature),
+      ).bind(masterKey, e.member.key, e.member.metadata, e.member.signature, e.body.data, e.body.timestamp, e.body.signature),
     ]);
   } catch {
     return c.json({ error: "Failed to update database" }, 500);
@@ -43,7 +45,7 @@ app.post("/", async (c) => {
   const query = await c.env.DB.prepare(
     "SELECT memberKey, memberMetadata, memberSignature, bodyData, bodyTimestamp, bodySignature FROM Entries WHERE masterKey = ? AND memberKey != ?"
   )
-    .bind(e.masterKey, e.member.key)
+    .bind(masterKey, e.member.key)
     .all();
 
   if (query.error) return c.json({ error: "Failed to query database" }, 500);
